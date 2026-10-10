@@ -1,0 +1,20 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Cog-Creators/Red-DiscordBot/V3/develop/schema/red_cog.schema.json",
+    "name": "DeadByQueue",
+    "short": "Fetch Dead By Daylight queue times",
+    "description": "Fetch Dead By Daylight queue times within Discord, using deadbyqueue.com",
+    "end_user_data_statement": "This cog does not persistently store any data or metadata about users.",
+    "author": [
+        "SerenoV7"
+    ],
+    "required_cogs": {},
+    "requirements": [],
+    "tags": [
+        "DeadByDaylight",
+        "Utility"
+    ],
+    "min_bot_version": "3.5.0",
+    "hidden": false,
+    "disabled": false,
+    "type": "COG"
+}

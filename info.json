@@ -1,0 +1,8 @@
+{
+    "author" : ["SerenoV7"],
+    "install_msg" : "Message the user will recieve when they agree to install your repository.",
+    "name" : "Sereno's Cogs",
+    "short" : "Assortment of Cogs I developed for my own instance of Red",
+    "description" : "Assortment of fun and utility Cogs I've developed for my own instance of Red. Some of these cogs are still in development and may not be fully functional.",
+    "tags" : ["cogs", "red", "discord", "utility", "fun"]
+}
