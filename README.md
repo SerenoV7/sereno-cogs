@@ -25,7 +25,7 @@ Run the following command in Discord: `[p]repo add sereno-cogs https://github.co
 
 | Name | Version | Description |
 |:-----|:--------|:------------|
-| DeadByQueue | 0.1.0 | Fetch Dead By Daylight queue times with configurable regions |
+| DeadByQueue | 0.1.1 | Fetch Dead By Daylight queue times with configurable regions |
 
 # Contact
 

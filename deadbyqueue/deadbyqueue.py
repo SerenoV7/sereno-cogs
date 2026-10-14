@@ -29,28 +29,39 @@ FLAGS = dict(REGIONS.values())
 CHOICES = [app_commands.Choice(name=n, value=c) for c, (n, _) in REGIONS.items()]
 
 
-# Single-region responses use a different shape: "Frankfurt Killer: 5m7s | Survivor: 6s"
-SINGLE = re.compile(r"^(.+?) Killer: (.+?) \| Survivor: (.+)$")
+MODES = [
+    app_commands.Choice(name="Live", value="live"),
+    app_commands.Choice(name="Live Event", value="live-event"),
+    app_commands.Choice(name="PTB", value="ptb"),
+    app_commands.Choice(name="PTB Event", value="ptb-event"),
+]
+PAIR = re.compile(r"(\d[\dhms]*) / (\d[\dhms]*)")  # "5m35s / 12s"
+NAME_END = re.compile(r"\s+(?=\d|❌|Event:)")  # names contain no digits
 
 
-def parse(entry: str) -> tuple[str, str, str]:
+def parse(entry: str, mode: str) -> tuple[str, str, str]:
     # "Frankfurt 5m35s / 12s" -> ("Frankfurt", "5m35s", "12s"), killer first, survivor second
-    parts = entry.rsplit(" ", 3)
-    if len(parts) == 4 and parts[2] == "/":
-        return parts[0], parts[1], parts[3]
-    return entry.split(" ❌")[0], "❌ Offline", "❌ Offline"  # e.g. "Ohio ❌ Offline"
+    name = NAME_END.split(entry, 1)[0]
+    pairs = PAIR.findall(entry)
+    if not pairs:  # e.g. "Ohio ❌ Offline"
+        return name, "❌ Offline", "❌ Offline"
+    # A "live, Event:" entry carries two pairs; take the one matching the requested mode.
+    return name, *pairs[-1 if mode.endswith("-event") else 0]
 
 
-def build_embed(text: str) -> discord.Embed:
-    text = text.strip()
-    m = SINGLE.match(text)
-    rows = [m.groups()] if m else [parse(e) for e in text.split(" | ")]
+def build_embed(text: str, mode: app_commands.Choice[str], region: str | None) -> discord.Embed:
+    rows = [parse(e, mode.value) for e in text.strip().split(" | ")]
+    rows = [r for r in rows if region in (None, r[0])]
+    e = discord.Embed(title=f"Queue Times · {mode.name}", colour=discord.Colour.dark_red())
+    e.set_footer(text="Data provided by deadbyqueue.com")
+    if not rows:
+        e.description = "No data returned."
+        return e
     # Three inline fields = three columns; each row is one line per column, so they always line up.
-    e = discord.Embed(title="Queue Times", colour=discord.Colour.dark_red())
     e.add_field(name="Region", value="\n".join(f"{FLAGS.get(n, ':earth_africa:')} {n}" for n, _, _ in rows))
     e.add_field(name=":knife: Killer", value="\n".join(k for _, k, _ in rows))
     e.add_field(name=":runner: Survivor", value="\n".join(s for _, _, s in rows))
-    return e.set_footer(text="Data provided by deadbyqueue.com")
+    return e
 
 
 class DeadByQueue(commands.Cog):
@@ -66,22 +77,23 @@ class DeadByQueue(commands.Cog):
             await self.session.close()
 
     @app_commands.command(description="Show Dead by Daylight queue times.")
-    @app_commands.describe(region="Only show this region (default: all)")
-    @app_commands.choices(region=CHOICES)
+    @app_commands.describe(region="Only show this region (default: all)", mode="Queue to show (default: Live)")
+    @app_commands.choices(region=CHOICES, mode=MODES)
     async def queuetime(
-        self, interaction: discord.Interaction, region: app_commands.Choice[str] | None = None
+        self,
+        interaction: discord.Interaction,
+        region: app_commands.Choice[str] | None = None,
+        mode: app_commands.Choice[str] | None = None,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
-        params = {
-            "region": region.value if region else ",".join(REGIONS),
-            "mode": "live,live-event",
-            "extras": "regionname",
-        }
+        mode = mode or MODES[0]
+        # Always fetch every region and filter locally: the single-region response has a different shape.
+        params = {"region": ",".join(REGIONS), "mode": mode.value, "extras": "regionname"}
         try:
             async with self.session.get(API, params=params) as resp:
                 resp.raise_for_status()
                 text = await resp.text()
-            embed = build_embed(text)
+            embed = build_embed(text, mode, region and region.name)
         except (aiohttp.ClientError, asyncio.TimeoutError):
             embed = discord.Embed(title="Queue Times", description="The API is unreachable.", colour=discord.Colour.dark_red())
         await interaction.followup.send(embed=embed, ephemeral=True)
