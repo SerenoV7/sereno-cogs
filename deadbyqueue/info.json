@@ -1,20 +1,10 @@
 {
-    "$schema": "https://raw.githubusercontent.com/Cog-Creators/Red-DiscordBot/V3/develop/schema/red_cog.schema.json",
-    "name": "DeadByQueue",
-    "short": "Fetch Dead By Daylight queue times",
-    "description": "Fetch Dead By Daylight queue times within Discord, using deadbyqueue.com",
-    "end_user_data_statement": "This cog does not persistently store any data or metadata about users.",
-    "author": [
-        "SerenoV7"
-    ],
-    "required_cogs": {},
-    "requirements": [],
-    "tags": [
-        "DeadByDaylight",
-        "Utility"
-    ],
-    "min_bot_version": "3.5.0",
-    "hidden": false,
-    "disabled": false,
-    "type": "COG"
+  "author": ["SerenoV7"],
+  "short": "Check Dead by Daylight queue times.",
+  "description": "Slash command showing live and PTB queue times (killer and survivor) for every Dead by Daylight region, via deadbyqueue.com.",
+  "install_msg": "Thanks for installing DeadByQueue! This cog sends requests to the external service api.deadbyqueue.com, stores no data, and needs slash commands enabled: `[p]slash enablecog deadbyqueue` then `[p]slash sync`.",
+  "min_python_version": [3, 10],
+  "end_user_data_statement": "This cog does not persistently store any end user data.",
+  "tags": ["utility", "deadbydaylight", "queue"],
+  "type": "COG"
 }

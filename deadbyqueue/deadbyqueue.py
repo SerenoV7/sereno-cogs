@@ -1,10 +1,15 @@
 import asyncio
+import logging
 import re
+from typing import Literal
 
 import aiohttp
 import discord
 from redbot.core import app_commands, commands
 from redbot.core.bot import Red
+
+log = logging.getLogger("red.sereno-cogs.deadbyqueue")  # red.<repo name>.<cog name>
+RequestType = Literal["discord_deleted_user", "owner", "user", "user_strict"]
 
 API = "https://api.deadbyqueue.com/queuetime"
 # code: (name as returned by the API, Discord flag shortcode)
@@ -49,10 +54,12 @@ def parse(entry: str, mode: str) -> tuple[str, str, str]:
     return name, *pairs[-1 if mode.endswith("-event") else 0]
 
 
-def build_embed(text: str, mode: app_commands.Choice[str], region: str | None) -> discord.Embed:
+def build_embed(
+    text: str, mode: app_commands.Choice[str], region: str | None, colour: discord.Colour
+) -> discord.Embed:
     rows = [parse(e, mode.value) for e in text.strip().split(" | ")]
     rows = [r for r in rows if region in (None, r[0])]
-    e = discord.Embed(title=f"Queue Times · {mode.name}", colour=discord.Colour.dark_red())
+    e = discord.Embed(title=f"Queue Times · {mode.name}", colour=colour)
     e.set_footer(text="Data provided by deadbyqueue.com")
     if not rows:
         e.description = "No data returned."
@@ -65,6 +72,8 @@ def build_embed(text: str, mode: app_commands.Choice[str], region: str | None) -
 
 
 class DeadByQueue(commands.Cog):
+    """Check Dead by Daylight queue times by region and mode."""
+
     def __init__(self, bot: Red) -> None:
         self.bot = bot
         self.session: aiohttp.ClientSession | None = None
@@ -85,7 +94,9 @@ class DeadByQueue(commands.Cog):
         region: app_commands.Choice[str] | None = None,
         mode: app_commands.Choice[str] | None = None,
     ) -> None:
+        """Show Dead by Daylight queue times."""
         await interaction.response.defer(ephemeral=True)
+        colour = await self.bot.get_embed_color(interaction.channel)
         mode = mode or MODES[0]
         # Always fetch every region and filter locally: the single-region response has a different shape.
         params = {"region": ",".join(REGIONS), "mode": mode.value, "extras": "regionname"}
@@ -93,11 +104,12 @@ class DeadByQueue(commands.Cog):
             async with self.session.get(API, params=params) as resp:
                 resp.raise_for_status()
                 text = await resp.text()
-            embed = build_embed(text, mode, region and region.name)
+            embed = build_embed(text, mode, region and region.name, colour)
         except (aiohttp.ClientError, asyncio.TimeoutError):
-            embed = discord.Embed(title="Queue Times", description="The API is unreachable.", colour=discord.Colour.dark_red())
+            log.warning("deadbyqueue.com request failed", exc_info=True)
+            embed = discord.Embed(title="Queue Times", description="The API is unreachable.", colour=colour)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    async def red_delete_data_for_user(self, **kwargs):
+    async def red_delete_data_for_user(self, *, requester: RequestType, user_id: int) -> None:
         """Nothing to delete: this cog does not store any user data."""
         return
